@@ -30,3 +30,18 @@ This project allows direct control of OS mouse and window management:
 - 🖐️ **Launch Application:** Show open palm to launch configured app (Notepad/Browser).
 
 ---
+
+## 📱 Mobile Camera as Windows Controller
+
+This mode turns your smartphone into a wireless hand-tracking camera to control the Windows environment.
+
+### Setup Instructions
+1. Install **IP Webcam** or **DroidCam** from Google Play / App Store.
+2. Connect your mobile device and Windows PC to the same Wi-Fi network.
+3. Start video server on the mobile app and copy your IP URL (e.g., `http://192.168.1.5:8080/video`).
+4. Update `MOBILE_CAM_URL` in `mobile_windows_controller.py`.
+5. Run the controller script:
+   ```bash
+   python mobile_windows_controller.py
+
+---
