@@ -137,7 +137,7 @@ while cap.isOpened():
                 right_click_frames = 0
 
             # ----------------------------------------------------------
-            # ACTION 3: LEFT CLICK (Pinky + Thumb)
+            # ACTION 3: DRAG (Pinky + Thumb)
             # ----------------------------------------------------------
             # Thresholds
             PINKY_PINCH_DIST = 0.04    # Start drag threshold
