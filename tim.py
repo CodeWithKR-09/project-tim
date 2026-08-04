@@ -15,7 +15,7 @@ SCREEN_WIDTH, SCREEN_HEIGHT = pyautogui.size()
 
 # Sensitivity & Boundary Settings
 MARGIN = 90             # Frame margin box for corner-to-corner screen reach
-SMOOTHING = 0.20        # Lower value = smoother cursor movement
+SMOOTHING = 0.08        # Lower value = smoother cursor movement
 prev_x, prev_y = 0, 0
 
 # Gesture Pinch Thresholds (Pixel distances)
@@ -139,13 +139,29 @@ while cap.isOpened():
             # ----------------------------------------------------------
             # ACTION 3: LEFT CLICK (Pinky + Thumb)
             # ----------------------------------------------------------
-            if pinch_pinky < PINKY_PINCH_DIST and not is_dragging:
-                if current_time - last_action_time > 0.4:  # Click cooldown
-                    pyautogui.click()
-                    print("[Action] Left Click Triggered (Pinky Pinch)")
-                    last_action_time = current_time
-                    cv2.putText(frame, "Left Click!", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+            # Thresholds
+            PINKY_PINCH_DIST = 0.04    # Start drag threshold
+            PINCH_RELEASE = 0.06       # Drop threshold (hysteresis prevents accidental drops)
 
+            # State Machine inside your frame processing loop:
+            if not is_dragging:
+                if pinch_pinky < PINKY_PINCH_DIST:
+                    # Press and hold left mouse button to pick up item
+                    pyautogui.mouseDown()
+                    is_dragging = True
+                    print("[Action] Drag Started")
+                else:
+                    # Hover cursor normally
+                    pyautogui.moveTo(curr_x, curr_y)
+            else:
+                # Carry item with cursor movement
+                pyautogui.moveTo(curr_x, curr_y)
+                
+                # Release item when fingers open
+                if pinch_pinky > PINCH_RELEASE:
+                    pyautogui.mouseUp()
+                    is_dragging = False
+                    print("[Action] Dropped")
             # ----------------------------------------------------------
             # ACTION 4: CLOSE WINDOW (Fist Gesture)
             # ----------------------------------------------------------
