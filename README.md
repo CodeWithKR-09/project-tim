@@ -24,10 +24,11 @@
 This project allows direct control of OS mouse and window management:
 
 - ☝️ **Move Pointer:** Move index finger within active camera box boundary.
-- 🤏 **Select Area / Drag:** Pinch index finger and thumb, then move across screen.
+- 🤏 **Select Area / Drag:** Pinch pinky finger and thumb, then move across screen.
 - 👆 **Right Click:** Pinch middle finger and thumb together.
+- 🤏 **Left Click** Pinch index and thumb finger together.
 - ✊ **Close Active Window:** Close hand into a fist (`Alt + F4`).
-- 🖐️ **Launch Application:** Show open palm to launch configured app (Notepad/Browser).
+
 
 ---
 
