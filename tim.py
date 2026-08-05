@@ -7,7 +7,7 @@ import time
 # ======================================================================
 # 1. SYSTEM SETTINGS
 # ======================================================================
-WEBCAM_INDEX = 0  # 0 for built-in laptop webcam (try 1 if screen remains black)
+WEBCAM_INDEX = 0  # 0 for built-in webcam (try 1 if using Iriun Webcam)
 
 pyautogui.FAILSAFE = False
 pyautogui.PAUSE = 0.01
@@ -15,23 +15,24 @@ SCREEN_WIDTH, SCREEN_HEIGHT = pyautogui.size()
 
 # Sensitivity & Boundary Settings
 MARGIN = 90             # Frame margin box for corner-to-corner screen reach
-SMOOTHING = 0.08        # Lower value = smoother cursor movement
+SMOOTHING = 0.10        # Lower value = smoother cursor & cleaner drawing
 prev_x, prev_y = 0, 0
 
 # Gesture Pinch Thresholds (Pixel distances)
-PINCH_START = 25        # Distance to START a drag (Index + Thumb)
-PINCH_RELEASE = 38      # Distance to RELEASE a drag
+PINCH_START = 28        # Distance to START a click/drag (Index or Ring)
+PINCH_RELEASE = 40      # Distance to RELEASE a click/drag
 RIGHT_CLICK_DIST = 26   # Distance for Right-Click (Middle + Thumb)
-PINKY_PINCH_DIST = 28   # Distance for Left-Click (Pinky + Thumb)
 FIST_DIST = 45          # Minimum distance for closed fist
 
 # Debounce Counters & Timers
 right_click_frames = 0
 fist_frames = 0
-
 last_action_time = 0
 ACTION_COOLDOWN = 1.2
+
+# Drag State Tracking
 is_dragging = False
+active_drag_finger = None  # Tracks which finger started the drag ('index' or 'ring')
 
 # ======================================================================
 # 2. MEDIAPIPE INITIALIZATION
@@ -45,7 +46,7 @@ hands = mp_hands.Hands(
     min_tracking_confidence=0.75
 )
 
-print(f"[*] Starting Laptop Webcam (Device Index: {WEBCAM_INDEX})...")
+print(f"[*] Starting Webcam (Device Index: {WEBCAM_INDEX})...")
 cap = cv2.VideoCapture(WEBCAM_INDEX)
 
 def count_extended_fingers(landmarks):
@@ -89,9 +90,9 @@ while cap.isOpened():
             thumb_tip = np.array([lm[4].x * w, lm[4].y * h])
             index_tip = np.array([lm[8].x * w, lm[8].y * h])
             middle_tip = np.array([lm[12].x * w, lm[12].y * h])
-            pinky_tip = np.array([lm[20].x * w, lm[20].y * h])  # Pinky fingertip (Landmark 20)
+            ring_tip = np.array([lm[16].x * w, lm[16].y * h]) # Ring fingertip (Landmark 16)
 
-            # Coordinate mapping
+            # Coordinate mapping using Index Finger position
             x_mapped = np.interp(index_tip[0], [MARGIN, w - MARGIN], [0, SCREEN_WIDTH])
             y_mapped = np.interp(index_tip[1], [MARGIN, h - MARGIN], [0, SCREEN_HEIGHT])
 
@@ -100,31 +101,55 @@ while cap.isOpened():
             curr_y = prev_y + (y_mapped - prev_y) * SMOOTHING
             prev_x, prev_y = curr_x, curr_y
 
+            # Move cursor continuously
+            pyautogui.moveTo(curr_x, curr_y)
+
             extended_count = count_extended_fingers(lm)
+            
+            # Distance calculations
             pinch_index = np.linalg.norm(index_tip - thumb_tip)
             pinch_middle = np.linalg.norm(middle_tip - thumb_tip)
-            pinch_pinky = np.linalg.norm(pinky_tip - thumb_tip)
+            pinch_ring = np.linalg.norm(ring_tip - thumb_tip)
 
             # ----------------------------------------------------------
-            # ACTION 1: CLICK & HOLD / DRAG (Index + Thumb)
+            # ACTION 1 & 2: LEFT CLICK/DRAW (Index) & DRAG/DROP (Ring)
             # ----------------------------------------------------------
             if not is_dragging:
+                # Prioritize Index Pinch (Left Click / Draw)
                 if pinch_index < PINCH_START:
                     pyautogui.mouseDown()
                     is_dragging = True
-                    print("[Action] Mouse Down (Dragging)")
-                else:
-                    pyautogui.moveTo(curr_x, curr_y)
+                    active_drag_finger = 'index'
+                    print("[Action] Left Click / Drawing Started (Index Pinch)")
+                
+                # Check Ring Pinch (Drag and Drop)
+                elif pinch_ring < PINCH_START:
+                    pyautogui.mouseDown()
+                    is_dragging = True
+                    active_drag_finger = 'ring'
+                    print("[Action] Drag & Drop Started (Ring Pinch)")
+
             else:
-                cv2.putText(frame, "HOLDING / DRAGGING", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-                pyautogui.moveTo(curr_x, curr_y)
-                if pinch_index > PINCH_RELEASE:
-                    pyautogui.mouseUp()
-                    is_dragging = False
-                    print("[Action] Mouse Up")
+                # If we are currently holding the mouse down, check for release 
+                # based on the specific finger that started the action.
+                if active_drag_finger == 'index':
+                    cv2.putText(frame, "LEFT CLICK / DRAWING", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                    if pinch_index > PINCH_RELEASE:
+                        pyautogui.mouseUp()
+                        is_dragging = False
+                        active_drag_finger = None
+                        print("[Action] Left Click / Drawing Released")
+                
+                elif active_drag_finger == 'ring':
+                    cv2.putText(frame, "DRAGGING & DROPPING", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+                    if pinch_ring > PINCH_RELEASE:
+                        pyautogui.mouseUp()
+                        is_dragging = False
+                        active_drag_finger = None
+                        print("[Action] Drag & Drop Released")
 
             # ----------------------------------------------------------
-            # ACTION 2: RIGHT CLICK (Middle + Thumb)
+            # ACTION 3: RIGHT CLICK (Middle + Thumb)
             # ----------------------------------------------------------
             if pinch_middle < RIGHT_CLICK_DIST and not is_dragging:
                 right_click_frames += 1
@@ -136,32 +161,6 @@ while cap.isOpened():
             else:
                 right_click_frames = 0
 
-            # ----------------------------------------------------------
-            # ACTION 3: DRAG (Pinky + Thumb)
-            # ----------------------------------------------------------
-            # Thresholds
-            PINKY_PINCH_DIST = 0.04    # Start drag threshold
-            PINCH_RELEASE = 0.06       # Drop threshold (hysteresis prevents accidental drops)
-
-            # State Machine inside your frame processing loop:
-            if not is_dragging:
-                if pinch_pinky < PINKY_PINCH_DIST:
-                    # Press and hold left mouse button to pick up item
-                    pyautogui.mouseDown()
-                    is_dragging = True
-                    print("[Action] Drag Started")
-                else:
-                    # Hover cursor normally
-                    pyautogui.moveTo(curr_x, curr_y)
-            else:
-                # Carry item with cursor movement
-                pyautogui.moveTo(curr_x, curr_y)
-                
-                # Release item when fingers open
-                if pinch_pinky > PINCH_RELEASE:
-                    pyautogui.mouseUp()
-                    is_dragging = False
-                    print("[Action] Dropped")
             # ----------------------------------------------------------
             # ACTION 4: CLOSE WINDOW (Fist Gesture)
             # ----------------------------------------------------------
@@ -182,3 +181,4 @@ while cap.isOpened():
 
 cap.release()
 cv2.destroyAllWindows()
+#code credited by KR
