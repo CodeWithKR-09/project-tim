@@ -1,4 +1,4 @@
-# 👆 AirTouch Menu — Interactive Touchless Kiosk Interface
+# 👆 AirTouch Menu — Interactive Touchless Menu
 
 [![Python Version](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/)
 [![OpenCV](https://img.shields.io/badge/OpenCV-4.x-green.svg)](https://opencv.org/)
@@ -43,6 +43,6 @@ This mode turns your smartphone into a wireless hand-tracking camera to control 
 4. Update `MOBILE_CAM_URL` in `mobile_windows_controller.py`.
 5. Run the controller script:
    ```bash
-   python mobile_windows_controller.py
+   python tim.py
 
 ---
